@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ქსელის ინფორმაცია</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary: #00eeff;
+            --primary-dark: #00b7c2;
+            --secondary: #8a2be2;
+            --dark: #0a0a23;
+            --darker: #040413;
+            --card-bg: rgba(10, 10, 35, 0.8);
+            --card-border: rgba(0, 238, 255, 0.2);
+            --light: #e6e6ff;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        .glow {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+        }
+        .glow-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 238, 255, 0.15), transparent);
+            top: -200px;
+            left: -200px;
+        }
+        .glow-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(138, 43, 226, 0.15), transparent);
+            bottom: -150px;
+            right: -150px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .title {
+            font-size: 3rem;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(0, 238, 255, 0.5);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 238, 255, 0.2);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 238, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--light);
+        }
+        #map {
+            height: 200px;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            background: var(--darker);
+        }
+        .ip-meta {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .meta-item {
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+        .meta-value {
+            font-size: 1.1rem;
+            color: var(--primary);
+            margin-bottom: 0.3rem;
+        }
+        .meta-label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        .info-value {
+            font-size: 1rem;
+            color: var(--primary);
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem 1.5rem;
+        }
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+        .btn {
+            background: var(--primary-dark);
+            color: var(--light);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+        .btn:hover {
+            background: var(--primary);
+            transform: scale(1.05);
+        }
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            min-height: 20px;
+        }
+        .loading {
+            width: 30px;
+            height: 30px;
+            position: relative;
+        }
+        .loading div {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: loading 1.2s linear infinite;
+        }
+        .loading div:nth-child(1) { animation-delay: 0s; top: 0; left: 11px; }
+        .loading div:nth-child(2) { animation-delay: -0.4s; top: 11px; left: 0; }
+        .loading div:nth-child(3) { animation-delay: -0.8s; top: 11px; right: 0; }
+        .loading div:nth-child(4) { animation-delay: -1.2s; bottom: 0; left: 11px; }
+        @keyframes loading {
+            0%, 100% { transform: scale(0); }
+            50% { transform: scale(1); }
+        }
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .title { font-size: 2rem; }
+            .card { padding: 1rem; }
+        }
+        .leaflet-container { background: var(--darker); }
+        .leaflet-popup-content-wrapper {
+            background: var(--card-bg);
+            color: var(--light);
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .leaflet-popup-tip { background: var(--card-bg); }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: var(--darker); }
+        ::-webkit-scrollbar-thumb { background: var(--primary-dark); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="container">
+        <header>
+            <h1 class="title">IP - INFO</h1>
+            <p class="subtitle"> თქვენი  ქსელის  ინფორმაცია</p>
+        </header>
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-globe"></i></div>
+                    <h2 class="card-title">გეოლოკაცია</h2>
+                </div>
+                <div id="map"></div>
+                <div class="ip-meta">
+                    <div class="meta-item">
+                        <div class="meta-value" id="city">...</div>
+                        <div class="meta-label">ქალაქი</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-value" id="country">...</div>
+                        <div class="meta-label">ქვეყანა</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-network-wired"></i></div>
+                    <h2 class="card-title">ქსელის ინფორმაცია</h2>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">IP მისამართი</div>
+                    <div class="info-value" id="ip">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">ISP პროვაიდერი</div>
+                    <div class="info-value" id="isp">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">ქსელის ტიპი</div>
+                    <div class="info-value" id="connection-type">მიღება...</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="networkChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-laptop"></i></div>
+                    <h2 class="card-title">სისტემის ინფორმაცია</h2>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">ბრაუზერი</div>
+                    <div class="info-value" id="browser">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">ოპერაციული სისტემა</div>
+                    <div class="info-value" id="os">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">ეკრანის გარჩევადობა</div>
+                    <div class="info-value" id="resolution">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">სისტემის ენა</div>
+                    <div class="info-value" id="language">მიღება...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">მოწყობილობის ტიპი</div>
+                    <div class="info-value" id="device-type">მიღება...</div>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="card-icon" style="margin: 0 auto 1rem auto;">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="stat-label">საშუალო პინგი</div>
+                <div class="stat-value" id="ping-stat">32ms</div>
+                <button class="btn" id="test-ping">
+                    <i class="fas fa-play"></i> ტესტის გაშვება
+                </button>
+            </div>
+            <div class="card stat-card">
+                <div class="card-icon" style="margin: 0 auto 1rem auto;">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="stat-label">უსაფრთხოების რეიტინგი</div>
+                <div class="stat-value" id="security-stat">92%</div>
+                <button class="btn" id="security-details">
+                    <i class="fas fa-info-circle"></i> დეტალები
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-history"></i></div>
+                    <h2 class="card-title">აქტივობის სტატისტიკა</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <footer>
+            <p>© 2025 iPinfo - თქვენი ციფრული კვალის ანალიზატორი. ავტორი - თ.ჯოხაძე</p>
+        </footer>
+    </div>
+    <script>
+        gsap.from("header", { duration: 1.2, y: -50, opacity: 0, ease: "power3.out" });
+        gsap.from(".card", { duration: 1, y: 50, opacity: 0, stagger: 0.15, ease: "power3.out", delay: 0.5 });
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).innerHTML = `
+                <div class="loading-container">
+                    <div class="loading"><div></div><div></div><div></div><div></div></div>
+                </div>
+            `;
+        }
+
+        showLoading('ip');
+        showLoading('city');
+        showLoading('country');
+        showLoading('isp');
+        showLoading('connection-type');
+        showLoading('browser');
+        showLoading('os');
+        showLoading('resolution');
+        showLoading('language');
+        showLoading('device-type');
+
+        fetch('https://ipapi.co/json/')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('ip').textContent = data.ip || 'ვერ მოიძებნა';
+                document.getElementById('city').textContent = data.city || 'ვერ მოიძებნა';
+                document.getElementById('country').textContent = data.country_name || 'ვერ მოიძებნა';
+                document.getElementById('isp').textContent = data.org || 'ვერ მოიძებნა';
+                document.getElementById('connection-type').textContent = 
+                    data.network ? (data.network.includes('mobile') ? 'მობილური' : 'ფიქსირებული') : 'ვერ მოიძებნა';
+                const lat = parseFloat(data.latitude);
+                const lng = parseFloat(data.longitude);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    initMap(lat, lng, data.city);
+                } else {
+                    document.getElementById('map').innerHTML = '<p class="text-center" style="color: #ff5555; padding: 2rem 0;">ლოკაციის მონაცემები მიუწვდომელია</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('ip').textContent = 'ვერ მოიძებნა';
+                document.getElementById('city').textContent = 'ვერ მოიძებნა';
+                document.getElementById('country').textContent = 'ვერ მოიძებნა';
+                document.getElementById('isp').textContent = 'ვერ მოიძებნა';
+                document.getElementById('connection-type').textContent = 'ვერ მოიძებნა';
+                document.getElementById('map').innerHTML = '<p class="text-center" style="color: #ff5555; padding: 2rem 0;">ლოკაციის მონაცემები მიუწვდომელია</p>';
+            });
+
+        const userAgent = navigator.userAgent;
+        let browser = 'უცნობი';
+        let os = 'უცნობი';
+        let deviceType = 'კომპიუტერი';
+
+        if (userAgent.includes('Chrome')) browser = 'Google Chrome';
+        else if (userAgent.includes('Firefox')) browser = 'Mozilla Firefox';
+        else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
+        else if (userAgent.includes('Edge')) browser = 'Microsoft Edge';
+        else if (userAgent.includes('Opera') || userAgent.includes('OPR')) browser = 'Opera';
+
+        if (userAgent.includes('Windows')) os = 'Windows';
+        else if (userAgent.includes('Mac OS')) os = 'Mac OS';
+        else if (userAgent.includes('Linux')) os = 'Linux';
+        else if (userAgent.includes('Android')) os = 'Android';
+        else if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) os = 'iOS';
+
+        if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
+            deviceType = 'მობილური';
+        } else if (userAgent.includes('iPad') || userAgent.includes('Tablet')) {
+            deviceType = 'ტაბლეტი';
+        }
+
+        document.getElementById('browser').textContent = browser;
+        document.getElementById('os').textContent = os;
+        document.getElementById('device-type').textContent = deviceType;
+        document.getElementById('resolution').textContent = `${window.screen.width}x${window.screen.height}`;
+        document.getElementById('language').textContent = navigator.language || navigator.userLanguage || 'უცნობი';
+
+        initNetworkChart();
+        initActivityChart();
+
+        animateValue('ping-stat', 100, 32, 1500);
+        animateValue('security-stat', 0, 92, 1500);
+
+        function initMap(lat, lng, city) {
+            const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([lat, lng], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
+            const userIcon = L.divIcon({
+                html: `<i class="fas fa-map-marker-alt" style="font-size: 2rem; color: #00eeff;"></i>`,
+                className: 'custom-div-icon',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup(`<b>${city || 'თქვენი ლოკაცია'}</b>`).openPopup();
+            L.circle([lat, lng], { color: '#00eeff', fillColor: '#00eeff', fillOpacity: 0.1, radius: 1000, weight: 1 }).addTo(map);
+        }
+
+        function initNetworkChart() {
+            const ctx = document.getElementById('networkChart').getContext('2d');
+            const chartData = {
+                labels: ['0:00', '3:00', '6:00', '9:00', '12:00', '15:00', '18:00', '21:00'],
+                datasets: [
+                    {
+                        label: 'ჩამოტვირთვა (Mbps)',
+                        data: [12, 19, 10, 17, 25, 30, 45, 40],
+                        borderColor: '#00eeff',
+                        backgroundColor: 'rgba(0, 238, 255, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'ატვირთვა (Mbps)',
+                        data: [5, 8, 6, 9, 15, 20, 25, 18],
+                        borderColor: '#8a2be2',
+                        backgroundColor: 'rgba(138, 43, 226, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            };
+            new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: 'rgba(255, 255, 255, 0.7)' } }
+                    },
+                    plugins: { legend: { labels: { color: 'rgba(255, 255, 255, 0.7)' } } }
+                }
+            });
+        }
+
+        function initActivityChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const chartData = {
+                labels: ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'],
+                datasets: [{
+                    label: 'ყოველდღიური აქტივობა',
+                    data: [65, 78, 52, 91, 82, 45, 60],
+                    backgroundColor: 'rgba(0, 238, 255, 0.5)',
+                    borderColor: '#00eeff',
+                    borderWidth: 1
+                }]
+            };
+            new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function animateValue(elementId, start, end, duration) {
+            const element = document.getElementById(elementId);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = value + (elementId === 'ping-stat' ? 'ms' : '%');
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        document.getElementById('test-ping').addEventListener('click', () => {
+            const pingValue = Math.floor(Math.random() * 100) + 20;
+            animateValue('ping-stat', 100, pingValue, 1500);
+        });
+
+        document.getElementById('security-details').addEventListener('click', () => {
+            console.log('Security details clicked');
+        });
+    </script>
+</body>
+</html>
